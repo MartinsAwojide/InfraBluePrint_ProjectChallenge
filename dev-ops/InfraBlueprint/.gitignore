@@ -1,6 +1,73 @@
+# InfraBlueprint .gitignore
+# Place this file in dev-ops/InfraBlueprint/ (replacing the starter's).
+#
+# Allowlist approach: everything in this folder is ignored by default,
+# and only infra/, docs/ and the required top-level files are included.
+# Local files (AGENTS.md, RISKS.md, PREFLIGHT.md, notes, scratch work)
+# stay out of the submission automatically.
+
+# 1. Ignore everything at this folder's top level
+/*
+
+# 2. Re-include only what the submission needs
+!/.gitignore
+!/README.md
+!/NEW_README.md
+!/example.tfvars
+!/infra/
+!/docs/
+
+# Tooling (delete these lines to keep tooling local too)
+# !/Makefile
+# !/bootstrap.sh
+# !/pyproject.toml
+# !/uv.lock
+# !/.python-version
+
+# 3. Terraform working files (anywhere under this folder)
 .terraform/
 *.tfstate
-*.tfstate.backup
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Dependency lock file: ignored, matching the starter template.
+# Delete this line to commit it and pin the exact provider version reviewers get.
 .terraform.lock.hcl
+
+# 4. Variable files: real values never get committed
 *.tfvars
-!example.tfvars
+*.tfvars.json
+!/example.tfvars
+
+# 5. Backend config: real state bucket name stays local
+backend.hcl
+!backend.hcl.example
+
+# 6. Secrets and credentials
+.env
+.env.*
+*.pem
+*.key
+.aws/
+
+# 7. Tool caches
+.venv/
+__pycache__/
+.pytest_cache/
+.terraform-plugin-cache/
+.tflint.d/
+
+# 8. OS and editor clutter
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

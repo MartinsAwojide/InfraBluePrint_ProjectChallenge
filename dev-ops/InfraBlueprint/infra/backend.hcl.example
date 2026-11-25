@@ -1,0 +1,5 @@
+# Copy to backend.hcl (gitignored) and set the name of a state bucket you own:
+#   cp backend.hcl.example backend.hcl
+#   terraform init -backend-config=backend.hcl
+# If the bucket is not in us-east-1, also add: region = "<bucket region>"
+bucket = "your-terraform-state-bucket"
