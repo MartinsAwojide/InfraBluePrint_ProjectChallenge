@@ -199,3 +199,75 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "assets" {
     }
   }
 }
+
+# Compute
+
+# The newest Amazon Linux 2023 image; x86_64 because t2.micro cannot run ARM images.
+data "aws_ami" "al2023" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-2023.*-x86_64"]
+  }
+}
+
+resource "aws_instance" "web" {
+  #checkov:skip=CKV_AWS_126:Detailed monitoring is billed per instance and the brief does not ask for it (see ADR 0007)
+  #checkov:skip=CKV_AWS_135:t2.micro does not support EBS optimization, and the brief requires t2.micro (see ADR 0007)
+  ami                    = data.aws_ami.al2023.id
+  instance_type          = "t2.micro"
+  subnet_id              = aws_subnet.public_a.id
+  vpc_security_group_ids = [aws_security_group.web.id]
+  iam_instance_profile   = aws_iam_instance_profile.web.name
+
+  # IMDSv2 only: credentials need a session token, which blocks SSRF-style credential theft.
+  metadata_options {
+    http_tokens = "required"
+  }
+
+  # Encrypt the root volume at rest. The provider's default tags don't reach it, so the tag is set here.
+  root_block_device {
+    encrypted = true
+    tags = {
+      Project = "vela-payments"
+    }
+  }
+}
+
+# Only EC2 may assume the role.
+data "aws_iam_policy_document" "ec2_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "web" {
+  name               = "vela-web-role"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
+}
+
+# GetObject and PutObject act on objects, so the resource is the bucket ARN plus /*.
+data "aws_iam_policy_document" "web_s3" {
+  statement {
+    actions   = ["s3:GetObject", "s3:PutObject"]
+    resources = ["${aws_s3_bucket.assets.arn}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "web_s3" {
+  name   = "vela-web-s3-access"
+  role   = aws_iam_role.web.id
+  policy = data.aws_iam_policy_document.web_s3.json
+}
+
+resource "aws_iam_instance_profile" "web" {
+  name = "vela-web-profile"
+  role = aws_iam_role.web.name
+}

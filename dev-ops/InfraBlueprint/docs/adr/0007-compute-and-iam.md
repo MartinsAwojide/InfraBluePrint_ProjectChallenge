@@ -17,6 +17,13 @@ The brief requires a `t2.micro` Amazon Linux 2023 instance in a public subnet, w
 
 The instance gets short-lived, automatically rotated credentials, and no access keys exist to leak. IMDSv2 blocks the classic SSRF route to those credentials. The AMI updates automatically on each plan, which also means a new AMI release will show the instance as needing replacement. Without `s3:ListBucket`, a request for a missing object returns 403 rather than 404.
 
+The provider's default tags do not reach the root volume, so the `Project` tag is set inside `root_block_device`; a test checks it.
+
+## Security scanner findings accepted
+
+- **CKV_AWS_126, detailed monitoring off:** detailed (one-minute) monitoring is billed per instance; basic five-minute monitoring is free and enough here. Suppressed inline.
+- **CKV_AWS_135, not EBS-optimized:** `t2.micro` does not support EBS optimization, and the brief requires `t2.micro`. Suppressed inline.
+
 ## Alternatives to explore
 
 - **Pin the AMI ID:** stable plans with no surprise replacements, but manual updates and region-specific IDs.

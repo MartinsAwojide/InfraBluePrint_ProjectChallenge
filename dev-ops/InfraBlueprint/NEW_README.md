@@ -78,6 +78,10 @@ flowchart TB
 
 The private subnets have no route to the internet: they use the VPC's main route table, which only routes inside the VPC. The database does not need outbound internet access, so there is no NAT Gateway, which also avoids its hourly charge. If a private workload later needs to reach the internet (for patching or external APIs), a NAT Gateway in a public subnet is the addition to make. See [ADR 0005](./docs/adr/0005-network-layout.md).
 
+### Instance profile instead of access keys
+
+The web server gets its AWS permissions from an IAM role attached through an instance profile (`vela-web-role`, `vela-web-profile`), so no access keys are stored on the instance or in the code. The role can only call `s3:GetObject` and `s3:PutObject` on objects in the assets bucket, nothing else. The instance requires IMDSv2, which protects those temporary credentials from server-side request forgery, and its root volume is encrypted. See [ADR 0007](./docs/adr/0007-compute-and-iam.md).
+
 ### SSE-S3 encryption instead of KMS
 
 The assets bucket is encrypted at rest with S3-managed keys (SSE-S3). With a KMS key, the EC2 instance's role would also need KMS permissions to read and write objects, which would break the rule that the role may only use `s3:GetObject` and `s3:PutObject`. All public access is blocked, versioning keeps every previous version of an object, and `force_destroy` is off, so `terraform destroy` will not delete a bucket that still holds objects. See [ADR 0009](./docs/adr/0009-storage-encryption.md).
