@@ -1,3 +1,14 @@
+terraform {
+  required_version = ">= 1.5.0, < 2.0.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
 resource "aws_security_group" "web" {
   name        = "web-sg"
   description = "Web server: HTTP and HTTPS from anywhere, SSH from the admin IP only"
