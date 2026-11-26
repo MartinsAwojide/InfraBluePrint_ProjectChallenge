@@ -1,3 +1,14 @@
+terraform {
+  required_version = ">= 1.5.0, < 2.0.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
 resource "aws_security_group" "db" {
   name        = "db-sg"
   description = "Database: PostgreSQL from web-sg only"

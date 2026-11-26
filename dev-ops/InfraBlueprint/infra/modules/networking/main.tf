@@ -1,3 +1,14 @@
+terraform {
+  required_version = ">= 1.5.0, < 2.0.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
 # Availability Zones are looked up, never hardcoded, so the code works in any region.
 data "aws_availability_zones" "available" {
   state = "available"
