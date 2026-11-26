@@ -88,7 +88,7 @@ terraform init -backend-config=backend.hcl
 terraform plan -var-file=../example.tfvars
 ```
 
-`example.tfvars` holds placeholder values that are enough for `plan`. To apply, copy it to `dev.tfvars`, set your own values and run `terraform apply -var-file=../dev.tfvars`. To log in to the web server afterwards, connect from the IP in `allowed_ssh_cidr` with EC2 Instance Connect: `aws ec2-instance-connect ssh --instance-id <id> --os-user ec2-user` (the ID is shown by `terraform state show aws_instance.web`).
+`example.tfvars` holds placeholder values that are enough for `plan`. To apply, copy it to `dev.tfvars`, set your own values and run `terraform apply -var-file=../dev.tfvars`. To log in to the web server afterwards, connect from the IP in `allowed_ssh_cidr` with EC2 Instance Connect: `aws ec2-instance-connect ssh --instance-id <id> --os-user ec2-user` (the ID is shown by `terraform state show module.compute.aws_instance.web`).
 
 ## Tear down
 
@@ -119,3 +119,21 @@ Empty the versioned assets bucket first (S3 console: **Empty**), or `destroy` fa
 - **Availability Zones and the AMI are looked up, not hardcoded.** An `aws_availability_zones` data source picks the region's first two available zones, and an `aws_ami` data source picks the newest Amazon-owned Amazon Linux 2023 x86_64 image. Zone names and AMI IDs differ per region, so the same code plans in whichever region `aws_region` names.
 - **Partial backend configuration.** Backend blocks can't read variables, and every reviewer has a different state bucket, so the bucket name comes from `backend.hcl` at init instead of being hardcoded.
 - **SSH through EC2 Instance Connect.** No key pair is attached to the web server. Each login pushes a one-time public key that IAM must authorize and that expires after 60 seconds, and `web-sg` accepts port 22 only from `allowed_ssh_cidr`, so no long-lived SSH key exists to leak.
+
+## Bonus: modules
+
+The stack is split into four local modules. The root `main.tf` keeps the Terraform settings, backend and provider, and only calls the modules; `variables.tf`, `outputs.tf` and `example.tfvars` are unchanged.
+
+```
+infra/
+├── main.tf             # settings, backend, provider, four module calls
+├── variables.tf        # root inputs, passed into the modules
+├── outputs.tf          # the three required outputs, read from module outputs
+└── modules/
+    ├── networking/     # VPC, subnets, Internet Gateway, public route table
+    ├── storage/        # S3 bucket, public access block, versioning, encryption
+    ├── compute/        # web-sg and its rules, EC2 instance, IAM role and instance profile
+    └── database/       # db-sg and its rule, DB subnet group, RDS instance
+```
+
+Each module has its own `main.tf`, `variables.tf` and `outputs.tf`, and receives everything through variables, so it can be read, tested and reused on its own. The root wires the modules through their outputs: `networking` provides the VPC and subnet IDs, `storage` the bucket ARN for the web server's IAM policy, and `compute` the `web-sg` ID that `db-sg` accepts on port 5432. Resource names inside the modules are the same as before, so only their addresses change (for example `module.database.aws_db_instance.main`).
