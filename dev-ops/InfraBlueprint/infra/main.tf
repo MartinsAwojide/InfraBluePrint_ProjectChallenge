@@ -44,7 +44,7 @@ data "aws_availability_zones" "available" {
 }
 
 resource "aws_vpc" "main" {
-  #checkov:skip=CKV2_AWS_11:Flow logs need extra resources and storage cost the brief does not ask for (see ADR 0005)
+  #checkov:skip=CKV2_AWS_11:Flow logs need extra resources and storage cost the brief does not ask for
   #checkov:skip=CKV2_AWS_12:No resource uses the default security group; the web server and database get their own groups
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -168,11 +168,11 @@ resource "aws_vpc_security_group_ingress_rule" "db_postgres_from_web" {
 # Storage
 
 resource "aws_s3_bucket" "assets" {
-  #checkov:skip=CKV_AWS_144:Cross-region replication needs a second bucket and IAM role the brief does not ask for (see ADR 0009)
-  #checkov:skip=CKV_AWS_145:SSE-S3 instead of KMS, so the EC2 role needs only GetObject and PutObject (see ADR 0009)
-  #checkov:skip=CKV_AWS_18:Access logging needs a separate log bucket the brief does not ask for (see ADR 0009)
-  #checkov:skip=CKV2_AWS_61:No lifecycle rules; old versions are kept on purpose for a payments client (see ADR 0009)
-  #checkov:skip=CKV2_AWS_62:No event notifications; nothing consumes bucket events (see ADR 0009)
+  #checkov:skip=CKV_AWS_144:Cross-region replication needs a second bucket and IAM role the brief does not ask for
+  #checkov:skip=CKV_AWS_145:SSE-S3 instead of KMS, so the EC2 role needs only GetObject and PutObject
+  #checkov:skip=CKV_AWS_18:Access logging needs a separate log bucket the brief does not ask for
+  #checkov:skip=CKV2_AWS_61:No lifecycle rules; old versions are kept on purpose for a payments client
+  #checkov:skip=CKV2_AWS_62:No event notifications; nothing consumes bucket events
   bucket = var.s3_bucket_name
 }
 
@@ -217,8 +217,8 @@ data "aws_ami" "al2023" {
 }
 
 resource "aws_instance" "web" {
-  #checkov:skip=CKV_AWS_126:Detailed monitoring is billed per instance and the brief does not ask for it (see ADR 0007)
-  #checkov:skip=CKV_AWS_135:t2.micro does not support EBS optimization, and the brief requires t2.micro (see ADR 0007)
+  #checkov:skip=CKV_AWS_126:Detailed monitoring is billed per instance and the brief does not ask for it
+  #checkov:skip=CKV_AWS_135:t2.micro does not support EBS optimization, and the brief requires t2.micro
   ami                    = data.aws_ami.al2023.id
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.public_a.id
@@ -284,13 +284,13 @@ resource "aws_db_subnet_group" "main" {
 }
 
 resource "aws_db_instance" "main" {
-  #checkov:skip=CKV_AWS_293:Deletion protection is off on purpose so terraform destroy can remove the database (see ADR 0008)
-  #checkov:skip=CKV_AWS_157:Multi-AZ roughly doubles the cost and the brief does not ask for it (see ADR 0008)
-  #checkov:skip=CKV_AWS_161:The brief requires username and password variables; IAM authentication is an alternative in ADR 0008
-  #checkov:skip=CKV_AWS_129:Log exports to CloudWatch add cost the brief does not ask for (see ADR 0008)
-  #checkov:skip=CKV2_AWS_30:Query logging needs a custom parameter group the brief does not ask for (see ADR 0008)
-  #checkov:skip=CKV_AWS_118:Enhanced monitoring needs an extra IAM role and is billed (see ADR 0008)
-  #checkov:skip=CKV_AWS_353:Performance Insights is an extra paid feature the brief does not ask for (see ADR 0008)
+  #checkov:skip=CKV_AWS_293:Deletion protection is off on purpose so terraform destroy can remove the database
+  #checkov:skip=CKV_AWS_157:Multi-AZ roughly doubles the cost and the brief does not ask for it
+  #checkov:skip=CKV_AWS_161:The brief requires username and password variables; IAM authentication is the alternative
+  #checkov:skip=CKV_AWS_129:Log exports to CloudWatch add cost the brief does not ask for
+  #checkov:skip=CKV2_AWS_30:Query logging needs a custom parameter group the brief does not ask for
+  #checkov:skip=CKV_AWS_118:Enhanced monitoring needs an extra IAM role and is billed
+  #checkov:skip=CKV_AWS_353:Performance Insights is an extra paid feature the brief does not ask for
   identifier        = "vela-db"
   engine            = "postgres"
   engine_version    = "15"

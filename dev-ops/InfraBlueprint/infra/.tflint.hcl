@@ -1,6 +1,5 @@
 # TFLint configuration for InfraBlueprint.
 # Run from infra/:  tflint --init  (once), then  tflint
-# See docs/adr/0010-tooling.md for why these rulesets were chosen.
 
 # Terraform language rules (bundled with TFLint, no download needed):
 # naming conventions, unused declarations, missing types and descriptions.

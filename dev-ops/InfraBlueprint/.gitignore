@@ -17,6 +17,9 @@
 !/infra/
 !/docs/
 
+# Decision records stay local
+/docs/adr/
+
 # Tooling (delete these lines to keep tooling local too)
 # !/Makefile
 # !/bootstrap.sh
