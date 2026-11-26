@@ -13,7 +13,19 @@ A single-AZ `aws_db_instance` in a subnet group spanning both private subnets, w
 
 ## Consequences
 
-The database is reachable only from `web-sg` inside the VPC, and stays within free-tier limits where they apply. Single-AZ means downtime during an AZ outage or maintenance. Terraform stores the master password in state in plain text, so the state bucket must be private, encrypted and versioned (ADR 0004). Teardown skips the final snapshot, so `destroy` deletes the data.
+The database is reachable only from `web-sg` inside the VPC, and stays within free-tier limits where they apply. Single-AZ means downtime during an AZ outage or maintenance. Terraform stores the master password in state in plain text, so the state bucket must be private, encrypted and versioned (ADR 0004). Teardown skips the final snapshot, so `destroy` deletes the data. Minor version upgrades are applied automatically, and tags are copied to any snapshot.
+
+## Security scanner findings accepted
+
+Checkov flags seven more settings on the database. Each is suppressed inline in `main.tf`, because it adds cost or resources the brief does not ask for, or contradicts the decision above:
+
+- **CKV_AWS_293, deletion protection off:** deliberate, so `terraform destroy` works as the brief's cost note asks.
+- **CKV_AWS_157, single-AZ:** Multi-AZ roughly doubles the cost (listed below as an alternative).
+- **CKV_AWS_161, no IAM database authentication:** the brief requires a username and password from variables (listed below as an alternative).
+- **CKV_AWS_129, no log exports:** CloudWatch Logs storage is billed.
+- **CKV2_AWS_30, no query logging:** needs a custom parameter group.
+- **CKV_AWS_118, no enhanced monitoring:** needs a monitoring IAM role and is billed.
+- **CKV_AWS_353, no Performance Insights:** an extra paid feature.
 
 ## Alternatives to explore
 

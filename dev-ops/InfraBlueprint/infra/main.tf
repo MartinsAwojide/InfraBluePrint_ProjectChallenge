@@ -271,3 +271,41 @@ resource "aws_iam_instance_profile" "web" {
   name = "vela-web-profile"
   role = aws_iam_role.web.name
 }
+
+# Database
+
+# RDS needs a subnet group covering at least two Availability Zones, even for a single-AZ database.
+resource "aws_db_subnet_group" "main" {
+  name       = "vela-db-subnets"
+  subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+}
+
+resource "aws_db_instance" "main" {
+  #checkov:skip=CKV_AWS_293:Deletion protection is off on purpose so terraform destroy can remove the database (see ADR 0008)
+  #checkov:skip=CKV_AWS_157:Multi-AZ roughly doubles the cost and the brief does not ask for it (see ADR 0008)
+  #checkov:skip=CKV_AWS_161:The brief requires username and password variables; IAM authentication is an alternative in ADR 0008
+  #checkov:skip=CKV_AWS_129:Log exports to CloudWatch add cost the brief does not ask for (see ADR 0008)
+  #checkov:skip=CKV2_AWS_30:Query logging needs a custom parameter group the brief does not ask for (see ADR 0008)
+  #checkov:skip=CKV_AWS_118:Enhanced monitoring needs an extra IAM role and is billed (see ADR 0008)
+  #checkov:skip=CKV_AWS_353:Performance Insights is an extra paid feature the brief does not ask for (see ADR 0008)
+  identifier        = "vela-db"
+  engine            = "postgres"
+  engine_version    = "15"
+  instance_class    = "db.t3.micro"
+  allocated_storage = 20
+  storage_encrypted = true
+
+  username = var.db_username
+  password = var.db_password
+
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  vpc_security_group_ids = [aws_security_group.db.id]
+  publicly_accessible    = false
+
+  auto_minor_version_upgrade = true
+  copy_tags_to_snapshot      = true
+
+  # Lets `terraform destroy` remove the database when done; this also deletes its data.
+  skip_final_snapshot = true
+  deletion_protection = false
+}

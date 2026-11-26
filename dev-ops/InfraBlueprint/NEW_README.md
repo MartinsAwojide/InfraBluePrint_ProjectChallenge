@@ -70,6 +70,8 @@ flowchart TB
 | `public_subnet_b_cidr` | string | `10.0.2.0/24` | Second public subnet, in the second Availability Zone. | No |
 | `private_subnet_a_cidr` | string | `10.0.11.0/24` | First private subnet (database), in the first Availability Zone. | No |
 | `private_subnet_b_cidr` | string | `10.0.12.0/24` | Second private subnet (database), in the second Availability Zone. | No |
+| `db_username` | string | none (required) | Master username for the PostgreSQL database. | Yes |
+| `db_password` | string | none (required) | Master password for the PostgreSQL database. | Yes |
 | `s3_bucket_name` | string | none (required) | Globally unique name for the static assets bucket: 3 to 63 lowercase letters, digits or hyphens. | No |
 
 ## Design decisions
@@ -77,6 +79,10 @@ flowchart TB
 ### No NAT Gateway
 
 The private subnets have no route to the internet: they use the VPC's main route table, which only routes inside the VPC. The database does not need outbound internet access, so there is no NAT Gateway, which also avoids its hourly charge. If a private workload later needs to reach the internet (for patching or external APIs), a NAT Gateway in a public subnet is the addition to make. See [ADR 0005](./docs/adr/0005-network-layout.md).
+
+### Database in private subnets
+
+The PostgreSQL 15 database (`db.t3.micro`) runs in the two private subnets, which have no route to the internet, and `publicly_accessible` is set to `false`. Its security group, `db-sg`, accepts port 5432 only from the web server's security group, `web-sg`, by reference rather than by IP address, so only the web server can connect. Storage is encrypted at rest. See [ADR 0008](./docs/adr/0008-database.md).
 
 ### Instance profile instead of access keys
 
@@ -87,5 +93,8 @@ The web server gets its AWS permissions from an IAM role attached through an ins
 The assets bucket is encrypted at rest with S3-managed keys (SSE-S3). With a KMS key, the EC2 instance's role would also need KMS permissions to read and write objects, which would break the rule that the role may only use `s3:GetObject` and `s3:PutObject`. All public access is blocked, versioning keeps every previous version of an object, and `force_destroy` is off, so `terraform destroy` will not delete a bucket that still holds objects. See [ADR 0009](./docs/adr/0009-storage-encryption.md).
 
 ## Security notes
+
+- **The database password is stored in Terraform state.** `db_password` is marked sensitive, so Terraform hides it in plan and apply output, but it is still written to the state file in plain text. The state bucket must therefore stay private, encrypted and versioned. For production, `manage_master_user_password = true` lets RDS generate the password and keep it in AWS Secrets Manager, so it never reaches state.
+- **Real values never go into `example.tfvars`.** Put your own IP address, database credentials and bucket name in a separate `.tfvars` file; `*.tfvars` files other than `example.tfvars` are ignored by git.
 
 ## Cost
