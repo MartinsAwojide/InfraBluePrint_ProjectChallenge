@@ -19,6 +19,14 @@ The instance gets short-lived, automatically rotated credentials, and no access 
 
 The provider's default tags do not reach the root volume, so the `Project` tag is set inside `root_block_device`; a test checks it.
 
+## Questions this decision raises
+
+- **Why look up the AMI instead of pinning an ID?** AMI IDs exist in one region only and change with each Amazon Linux release. The lookup lets the same code plan in any region `aws_region` names.
+- **Why `owners = ["amazon"]`?** Anyone can publish a public AMI with a matching name. Restricting the owner ensures the image comes from Amazon, not an impostor.
+- **What is the weak spot?** `most_recent = true` means a new AMI release changes the instance's `ami`, and Terraform plans to replace the instance. For production, pin the ID or add `lifecycle { ignore_changes = [ami] }` and roll images deliberately.
+- **Why the `x86_64` filter?** Without it the lookup can return an ARM (`arm64`) image, which `t2.micro` cannot boot.
+- **Why IMDSv2?** The instance profile removes keys from disk, but with IMDSv1 any server-side request forgery bug can read the role's credentials with one GET request. IMDSv2 requires a PUT for a session token first, which blocks that.
+
 ## Security scanner findings accepted
 
 - **CKV_AWS_126, detailed monitoring off:** detailed (one-minute) monitoring is billed per instance; basic five-minute monitoring is free and enough here. Suppressed inline.
