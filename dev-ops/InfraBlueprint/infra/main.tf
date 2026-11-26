@@ -225,6 +225,9 @@ resource "aws_instance" "web" {
   vpc_security_group_ids = [aws_security_group.web.id]
   iam_instance_profile   = aws_iam_instance_profile.web.name
 
+  # No key pair: SSH uses EC2 Instance Connect, preinstalled on Amazon Linux 2023. IAM authorizes
+  # a one-time public key valid for 60 seconds, and web-sg accepts port 22 only from allowed_ssh_cidr.
+
   # IMDSv2 only: credentials need a session token, which blocks SSRF-style credential theft.
   metadata_options {
     http_tokens = "required"

@@ -88,7 +88,7 @@ terraform init -backend-config=backend.hcl
 terraform plan -var-file=../example.tfvars
 ```
 
-`example.tfvars` holds placeholder values that are enough for `plan`. To apply, copy it to `dev.tfvars`, set your own values and run `terraform apply -var-file=../dev.tfvars`.
+`example.tfvars` holds placeholder values that are enough for `plan`. To apply, copy it to `dev.tfvars`, set your own values and run `terraform apply -var-file=../dev.tfvars`. To log in to the web server afterwards, connect from the IP in `allowed_ssh_cidr` with EC2 Instance Connect: `aws ec2-instance-connect ssh --instance-id <id> --os-user ec2-user` (the ID is shown by `terraform state show aws_instance.web`).
 
 ## Tear down
 
@@ -118,3 +118,4 @@ Empty the versioned assets bucket first (S3 console: **Empty**), or `destroy` fa
 - **Private subnets on the VPC's main route table.** Only the two public subnets are associated with the public route table. The private subnets fall back to the main route table, which holds only the local route for `10.0.0.0/16`, so the database can reach the web server inside the VPC and nothing outside it.
 - **Availability Zones and the AMI are looked up, not hardcoded.** An `aws_availability_zones` data source picks the region's first two available zones, and an `aws_ami` data source picks the newest Amazon-owned Amazon Linux 2023 x86_64 image. Zone names and AMI IDs differ per region, so the same code plans in whichever region `aws_region` names.
 - **Partial backend configuration.** Backend blocks can't read variables, and every reviewer has a different state bucket, so the bucket name comes from `backend.hcl` at init instead of being hardcoded.
+- **SSH through EC2 Instance Connect.** No key pair is attached to the web server. Each login pushes a one-time public key that IAM must authorize and that expires after 60 seconds, and `web-sg` accepts port 22 only from `allowed_ssh_cidr`, so no long-lived SSH key exists to leak.
