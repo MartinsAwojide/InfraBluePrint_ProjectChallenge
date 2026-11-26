@@ -12,6 +12,11 @@ variable "vpc_cidr" {
 variable "allowed_ssh_cidr" {
   description = "Your IP address in CIDR notation allowed to SSH into the EC2 instance (e.g. 203.0.113.5/32)."
   type        = string
+
+  validation {
+    condition     = can(cidrhost(var.allowed_ssh_cidr, 0)) && var.allowed_ssh_cidr != "0.0.0.0/0"
+    error_message = "allowed_ssh_cidr must be a valid CIDR block for your own IP (for example 203.0.113.5/32), never 0.0.0.0/0."
+  }
 }
 
 variable "db_username" {

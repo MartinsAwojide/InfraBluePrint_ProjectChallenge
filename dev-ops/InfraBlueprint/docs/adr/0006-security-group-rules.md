@@ -13,7 +13,11 @@ Define the two groups with `aws_security_group`, and each rule as a separate `aw
 
 ## Consequences
 
-One resource per rule gives clean plans and diffs, and each rule carries its own description and tags. Referencing `web-sg` rather than an IP range means any instance in that group can reach the database, and nothing else can, even if addresses change.
+One resource per rule gives clean plans and diffs, and each rule carries its own description. The `Project` tag reaches every group and rule through the provider's default tags. Referencing `web-sg` rather than an IP range means any instance in that group can reach the database, and nothing else can, even if addresses change.
+
+## Security scanner findings accepted
+
+- **CKV_AWS_260, port 80 open to `0.0.0.0/0`:** required by the brief for the public web server. Suppressed inline in `main.tf` with this reason. Serving HTTPS only, with port 80 redirecting, would be the hardening step once a certificate exists.
 
 ## Alternatives to explore
 
