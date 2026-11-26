@@ -65,7 +65,7 @@ Terraform uses the standard AWS credential sources (`aws configure`, `AWS_PROFIL
 
 ### State bucket
 
-The S3 backend bucket must exist before `terraform init`. Create it once by hand:
+The S3 backend bucket must exist before `terraform init`. State stores the database password in plain text, so the bucket is private, versioned and encrypted. Create it once by hand:
 
 ```sh
 BUCKET=your-terraform-state-bucket
@@ -118,7 +118,3 @@ Empty the versioned assets bucket first (S3 console: **Empty**), or `destroy` fa
 - **Private subnets on the VPC's main route table.** Only the two public subnets are associated with the public route table. The private subnets fall back to the main route table, which holds only the local route for `10.0.0.0/16`, so the database can reach the web server inside the VPC and nothing outside it.
 - **Availability Zones and the AMI are looked up, not hardcoded.** An `aws_availability_zones` data source picks the region's first two available zones, and an `aws_ami` data source picks the newest Amazon-owned Amazon Linux 2023 x86_64 image. Zone names and AMI IDs differ per region, so the same code plans in whichever region `aws_region` names.
 - **Partial backend configuration.** Backend blocks can't read variables, and every reviewer has a different state bucket, so the bucket name comes from `backend.hcl` at init instead of being hardcoded.
-
-## Security notes
-
-The database password is marked sensitive but is stored in Terraform state in plain text, so the state bucket is private, versioned and encrypted.
