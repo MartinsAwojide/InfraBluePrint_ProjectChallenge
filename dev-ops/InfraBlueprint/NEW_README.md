@@ -63,7 +63,19 @@ flowchart TB
 
 ## Variables
 
+| Name | Type | Default | Description | Sensitive |
+| --- | --- | --- | --- | --- |
+| `vpc_cidr` | string | `10.0.0.0/16` | CIDR block for the VPC. | No |
+| `public_subnet_a_cidr` | string | `10.0.1.0/24` | First public subnet, in the first Availability Zone. | No |
+| `public_subnet_b_cidr` | string | `10.0.2.0/24` | Second public subnet, in the second Availability Zone. | No |
+| `private_subnet_a_cidr` | string | `10.0.11.0/24` | First private subnet (database), in the first Availability Zone. | No |
+| `private_subnet_b_cidr` | string | `10.0.12.0/24` | Second private subnet (database), in the second Availability Zone. | No |
+
 ## Design decisions
+
+### No NAT Gateway
+
+The private subnets have no route to the internet: they use the VPC's main route table, which only routes inside the VPC. The database does not need outbound internet access, so there is no NAT Gateway, which also avoids its hourly charge. If a private workload later needs to reach the internet (for patching or external APIs), a NAT Gateway in a public subnet is the addition to make. See [ADR 0005](./docs/adr/0005-network-layout.md).
 
 ## Security notes
 

@@ -18,6 +18,15 @@ The brief requires a custom `10.0.0.0/16` VPC with two public and two private su
 
 The database has no route to or from the internet. Two private AZs satisfy RDS's subnet group requirement and leave room for Multi-AZ later. Without a NAT Gateway, nothing in the private subnets can reach the internet (RDS doesn't need to), which saves the hourly NAT cost. The EC2 instance reaches S3 over its public endpoint through the Internet Gateway.
 
+## Security scanner findings accepted
+
+Checkov flags four things in this layout. Each is suppressed inline in `main.tf` with its reason, because fixing it would add resources or cost the brief does not ask for, or would contradict the design:
+
+- **CKV_AWS_130, public subnets assign public IPs:** intended; the web server must be reachable on its public IP.
+- **CKV_AWS_394, Availability Zone identity not pinned:** pinning means hardcoding zone IDs. Zone names sort alphabetically, so the first two stay the same when AWS adds a zone.
+- **CKV2_AWS_11, no VPC flow logs:** needs a log destination, an IAM role and storage cost (listed below as an alternative).
+- **CKV2_AWS_12, default security group not restricted:** restricting it needs an extra `aws_default_security_group` resource. Nothing is attached to the default group; the web server and database use their own.
+
 ## Alternatives to explore
 
 - **S3 Gateway VPC endpoint:** free, keeps EC2-to-S3 traffic on the AWS network, and lets the bucket policy require the endpoint. A strong, low-cost hardening step.
