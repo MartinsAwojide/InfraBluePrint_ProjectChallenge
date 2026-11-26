@@ -70,12 +70,17 @@ flowchart TB
 | `public_subnet_b_cidr` | string | `10.0.2.0/24` | Second public subnet, in the second Availability Zone. | No |
 | `private_subnet_a_cidr` | string | `10.0.11.0/24` | First private subnet (database), in the first Availability Zone. | No |
 | `private_subnet_b_cidr` | string | `10.0.12.0/24` | Second private subnet (database), in the second Availability Zone. | No |
+| `s3_bucket_name` | string | none (required) | Globally unique name for the static assets bucket: 3 to 63 lowercase letters, digits or hyphens. | No |
 
 ## Design decisions
 
 ### No NAT Gateway
 
 The private subnets have no route to the internet: they use the VPC's main route table, which only routes inside the VPC. The database does not need outbound internet access, so there is no NAT Gateway, which also avoids its hourly charge. If a private workload later needs to reach the internet (for patching or external APIs), a NAT Gateway in a public subnet is the addition to make. See [ADR 0005](./docs/adr/0005-network-layout.md).
+
+### SSE-S3 encryption instead of KMS
+
+The assets bucket is encrypted at rest with S3-managed keys (SSE-S3). With a KMS key, the EC2 instance's role would also need KMS permissions to read and write objects, which would break the rule that the role may only use `s3:GetObject` and `s3:PutObject`. All public access is blocked, versioning keeps every previous version of an object, and `force_destroy` is off, so `terraform destroy` will not delete a bucket that still holds objects. See [ADR 0009](./docs/adr/0009-storage-encryption.md).
 
 ## Security notes
 

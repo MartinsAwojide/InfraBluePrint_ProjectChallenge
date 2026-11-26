@@ -34,6 +34,11 @@ variable "db_password" {
 variable "s3_bucket_name" {
   description = "Globally unique name for the S3 static assets bucket."
   type        = string
+
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$", var.s3_bucket_name))
+    error_message = "s3_bucket_name must be 3 to 63 lowercase letters, digits or hyphens, starting and ending with a letter or digit."
+  }
 }
 
 variable "public_subnet_a_cidr" {

@@ -161,3 +161,41 @@ resource "aws_vpc_security_group_ingress_rule" "db_postgres_from_web" {
   to_port                      = 5432
   referenced_security_group_id = aws_security_group.web.id
 }
+
+# Storage
+
+resource "aws_s3_bucket" "assets" {
+  #checkov:skip=CKV_AWS_144:Cross-region replication needs a second bucket and IAM role the brief does not ask for (see ADR 0009)
+  #checkov:skip=CKV_AWS_145:SSE-S3 instead of KMS, so the EC2 role needs only GetObject and PutObject (see ADR 0009)
+  #checkov:skip=CKV_AWS_18:Access logging needs a separate log bucket the brief does not ask for (see ADR 0009)
+  #checkov:skip=CKV2_AWS_61:No lifecycle rules; old versions are kept on purpose for a payments client (see ADR 0009)
+  #checkov:skip=CKV2_AWS_62:No event notifications; nothing consumes bucket events (see ADR 0009)
+  bucket = var.s3_bucket_name
+}
+
+resource "aws_s3_bucket_public_access_block" "assets" {
+  bucket                  = aws_s3_bucket.assets.id
+  block_public_acls       = true
+  ignore_public_acls      = true
+  block_public_policy     = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "assets" {
+  bucket = aws_s3_bucket.assets.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# SSE-S3 encrypts at rest without giving the EC2 role any KMS permissions.
+resource "aws_s3_bucket_server_side_encryption_configuration" "assets" {
+  bucket = aws_s3_bucket.assets.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
