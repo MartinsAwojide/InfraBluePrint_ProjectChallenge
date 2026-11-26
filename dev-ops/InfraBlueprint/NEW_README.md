@@ -61,15 +61,84 @@ flowchart TB
 
 ## Setup
 
+### 1. Prerequisites
+
+- Terraform 1.5.7 or later, below 2.0 (`terraform version`)
+- AWS CLI v2, to create the state bucket
+- An AWS account and an IAM user or role you can use from the command line
+
+### 2. Configure AWS credentials
+
+Terraform reads credentials from the standard AWS locations, never from the code. Use one of:
+
+```sh
+aws configure                     # writes ~/.aws/credentials
+export AWS_PROFILE=your-profile   # or pick a named profile
+```
+
+Check that they work with `aws sts get-caller-identity`.
+
+**Permissions.** `terraform init` and `terraform plan` only read: they need EC2 describe access (Availability Zones, the AMI lookup) and read and write access to your own state bucket. A real `terraform apply` also creates EC2, RDS, S3 and IAM resources, so it needs permission to manage all four, including IAM roles and instance profiles (in a sandbox account, `AdministratorAccess` is the simplest choice). Without the IAM permissions, `apply` stops partway with an `iam:CreateRole` access denied error.
+
+### 3. Create the state bucket (once, by hand)
+
+Terraform stores its state in an S3 bucket, which must exist before `terraform init`. It is created outside this code on purpose, so destroying the stack never deletes its own state. Pick a globally unique name and run:
+
+```sh
+BUCKET=your-terraform-state-bucket
+
+aws s3api create-bucket --bucket "$BUCKET" --region us-east-1
+aws s3api put-bucket-versioning --bucket "$BUCKET" \
+  --versioning-configuration Status=Enabled
+aws s3api put-public-access-block --bucket "$BUCKET" \
+  --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+aws s3api put-bucket-encryption --bucket "$BUCKET" \
+  --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+```
+
+Versioning keeps every earlier copy of the state, and the state holds the database password, so the bucket stays private and encrypted. For a region other than `us-east-1`, add `--create-bucket-configuration LocationConstraint=<region>` to `create-bucket`, and set `region` in `backend.hcl` (next step).
+
+### 4. Point Terraform at your bucket
+
+```sh
+cd infra
+cp backend.hcl.example backend.hcl
+```
+
+Edit `backend.hcl` and set `bucket` to the name from step 3. The file is ignored by git, so your bucket name stays out of the repository.
+
+### 5. Choose your variable values
+
+`example.tfvars` (in the project folder, next to `infra/`) holds valid placeholder values, enough to run `plan`. To build real infrastructure, copy it and put in your own IP address, database credentials and a unique bucket name:
+
+```sh
+cp ../example.tfvars ../dev.tfvars
+```
+
+Every `.tfvars` file except `example.tfvars` is ignored by git.
+
+### 6. Initialise and plan
+
+From `infra/`:
+
+```sh
+terraform init -backend-config=backend.hcl
+terraform plan -var-file=../example.tfvars
+```
+
+`plan` shows 26 resources to create and changes nothing. To build them, run `terraform apply -var-file=../dev.tfvars`; this is billed (see Cost). When done, remove everything with `terraform destroy -var-file=../dev.tfvars`.
+
 ## Variables
 
 | Name | Type | Default | Description | Sensitive |
 | --- | --- | --- | --- | --- |
+| `aws_region` | string | none (required) | AWS region to deploy all resources into. | No |
 | `vpc_cidr` | string | `10.0.0.0/16` | CIDR block for the VPC. | No |
 | `public_subnet_a_cidr` | string | `10.0.1.0/24` | First public subnet, in the first Availability Zone. | No |
 | `public_subnet_b_cidr` | string | `10.0.2.0/24` | Second public subnet, in the second Availability Zone. | No |
 | `private_subnet_a_cidr` | string | `10.0.11.0/24` | First private subnet (database), in the first Availability Zone. | No |
 | `private_subnet_b_cidr` | string | `10.0.12.0/24` | Second private subnet (database), in the second Availability Zone. | No |
+| `allowed_ssh_cidr` | string | none (required) | Your IP address in CIDR notation (for example `203.0.113.5/32`), the only source allowed to SSH into the web server. `0.0.0.0/0` is rejected. | No |
 | `db_username` | string | none (required) | Master username for the PostgreSQL database. | Yes |
 | `db_password` | string | none (required) | Master password for the PostgreSQL database. | Yes |
 | `s3_bucket_name` | string | none (required) | Globally unique name for the static assets bucket: 3 to 63 lowercase letters, digits or hyphens. | No |
@@ -91,6 +160,10 @@ The web server gets its AWS permissions from an IAM role attached through an ins
 ### SSE-S3 encryption instead of KMS
 
 The assets bucket is encrypted at rest with S3-managed keys (SSE-S3). With a KMS key, the EC2 instance's role would also need KMS permissions to read and write objects, which would break the rule that the role may only use `s3:GetObject` and `s3:PutObject`. All public access is blocked, versioning keeps every previous version of an object, and `force_destroy` is off, so `terraform destroy` will not delete a bucket that still holds objects. See [ADR 0009](./docs/adr/0009-storage-encryption.md).
+
+### Partial backend configuration
+
+State lives in S3, but the bucket name is not in the code. `main.tf` sets the state key, region and encryption, and the bucket name comes from `backend.hcl` at `terraform init -backend-config=backend.hcl`. Terraform reads the backend before any variables exist, so a backend block cannot use `var.` values; a partial configuration is the documented way to keep account-specific settings out of the code. Each engineer points the same code at their own bucket without editing it. There is no state locking, which is fine for one engineer; DynamoDB locking is the next step for a team. See [ADR 0004](./docs/adr/0004-remote-state-partial-backend.md).
 
 ## Security notes
 

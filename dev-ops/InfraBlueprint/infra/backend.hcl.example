@@ -1,5 +1,11 @@
-# Copy to backend.hcl (gitignored) and set the name of a state bucket you own:
-#   cp backend.hcl.example backend.hcl
+# Backend settings for terraform init. The S3 state bucket must already exist:
+# create it by hand first (see the README Setup section). Then, from infra/:
+#
+#   cp backend.hcl.example backend.hcl    (backend.hcl is ignored by git)
 #   terraform init -backend-config=backend.hcl
-# If the bucket is not in us-east-1, also add: region = "<bucket region>"
+#
+# main.tf already sets the state key, the region (us-east-1) and encryption.
+# If your state bucket is in another region, add this line with its region:
+#   region = "<your bucket's region>"
+
 bucket = "your-terraform-state-bucket"

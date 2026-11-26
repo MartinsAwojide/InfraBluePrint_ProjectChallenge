@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5"
+  required_version = ">= 1.5.0, < 2.0.0"
 
   required_providers {
     aws = {
@@ -8,12 +8,15 @@ terraform {
     }
   }
 
-  # Uncomment and configure once your S3 backend bucket exists.
-  # backend "s3" {
-  #   bucket = "your-terraform-state-bucket"
-  #   key    = "vela-payments/terraform.tfstate"
-  #   region = var.aws_region
-  # }
+  # Partial configuration: the state bucket name comes from backend.hcl at init
+  # (terraform init -backend-config=backend.hcl), so each engineer uses their own
+  # bucket without editing code. Backend blocks cannot read variables, so the
+  # region is written out here.
+  backend "s3" {
+    key     = "vela-payments/terraform.tfstate"
+    region  = "us-east-1"
+    encrypt = true
+  }
 }
 
 provider "aws" {
